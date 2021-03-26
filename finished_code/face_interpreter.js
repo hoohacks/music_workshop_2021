@@ -1,27 +1,49 @@
 const fetch = require('node-fetch');
-const maxApi = require('max-api');
+const maxApi = require("max-api");
 
 maxApi.addHandler('face_data', async function (name) {
     if (name == null || name.length == 0){
         name = "random";
     }
     var data = await getFaceData(name);
-    maxApi.post(0); // pick out the values we want
+    var max_emotion = "neutral";
+    var max_num = 0;
+    for(var name in data.emotion){
+        if (data.emotion[name] > max_num){
+            max_num = data.emotion[name];
+            max_emotion = name;
+        }
+    }
+
+    var max_hair = data.hair.bald == 1.0 ? "none" : "waiting";
+    max_num = 0;
+    for(var i = 0; i < data.hair.hairColor.length; i++){
+        if (data.hair.hairColor[i].confidence > max_num){
+            max_num = data.hair.hairColor[i].confidence;
+            max_hair = data.hair.hairColor[i].color;
+        }
+    }
+    maxApi.outlet(max_emotion, max_hair, data.age);
 });
 
 async function getFaceData(person){
     if(person == null){
         person = "random";
     }
-    var post_url = "http://hoohacksmusicworkshop.eastus.cloudapp.azure.com:5000/";
-    const request = {
+    var post_url = "http://hoohacksmusicworkshop.eastus.cloudapp.azure.com:5000/face";
+    var request = {
         method: "POST",
-        body: JSON.stringify({"person": person})
+        headers: {'content-type': 'application/json'}
     };
+    var my_req_body = {
+        "person": person
+    };
+    request.body = JSON.stringify(my_req_body);
     var answer = await fetch(post_url, request).then(response =>{
         return response;
     });
     var data = await answer.json();
+    console.log(data[0].faceAttributes);
     return data[0].faceAttributes;
 }
 
