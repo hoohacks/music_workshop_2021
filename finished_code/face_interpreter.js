@@ -1,35 +1,45 @@
-const fetch = require('node-fetch');
-const maxApi = require("max-api");
+const fetch = require('node-fetch'); // used to post request
+const maxApi = require("max-api"); // used to connect to Max patch. Do not use npm to download this, Max will handle it.
 
+/**
+ * Handler for "face_data" input from Max patch.
+ * Note: This handler uses an async function because it calls another async function used to send a post request. Unless you
+ * are using an async behavior in your function, your function does not need to be asynchronous.
+ */
 maxApi.addHandler('face_data', async function (name) {
-    if (name == null || name.length == 0){
-        name = "random";
-    }
-    var data = await getFaceData(name);
+    var data = await getFaceData(name); // Gets face data in the form of the comment below
+    
+    // Deciding the most powerful emotion
     var max_emotion = "neutral";
     var max_num = 0;
-    for(var name in data.emotion){
-        if (data.emotion[name] > max_num){
-            max_num = data.emotion[name];
-            max_emotion = name;
+    for(var e in data.emotion){
+        if (data.emotion[e] > max_num){
+            max_num = data.emotion[e];
+            max_emotion = e;
         }
     }
 
-    var max_hair = data.hair.bald == 1.0 ? "none" : "waiting";
+    // Finding the most confident hair color
+    var max_hair = data.hair.bald == 1.0 ? "none" : "waiting"; // if bald, don't get hair color.
     max_num = 0;
-    for(var i = 0; i < data.hair.hairColor.length; i++){
+    for(var i = 0; max_hair != "none" && i < data.hair.hairColor.length; i++){
         if (data.hair.hairColor[i].confidence > max_num){
             max_num = data.hair.hairColor[i].confidence;
             max_hair = data.hair.hairColor[i].color;
         }
     }
+
+    //sending the face info in order to the Max patch
     maxApi.outlet(max_emotion, max_hair, data.age);
 });
 
+
+/**
+ * Recieves HooHacks member name and returns their face data using Microsoft's Face API.
+ * @param {String} person first name of HooHacks member (picture and names found on https://hoohacks.io) 
+ */
 async function getFaceData(person){
-    if(person == null){
-        person = "random";
-    }
+    // Do not use this link! It will not work after judging at HooHacks. Use Azure to get your own face data.
     var post_url = "http://hoohacksmusicworkshop.eastus.cloudapp.azure.com:5000/face";
     var request = {
         method: "POST",
@@ -43,10 +53,10 @@ async function getFaceData(person){
         return response;
     });
     var data = await answer.json();
-    console.log(data[0].faceAttributes);
     return data[0].faceAttributes;
 }
 
+// Example return from getFaceData
 /*
     "faceAttributes": {
             "age": 71.0,
